@@ -1,0 +1,221 @@
+#-------------------------------------------------------------------------------
+# Importing Libraries
+#-------------------------------------------------------------------------------
+library(tidyverse)
+library(lubridate) # for date handling
+list.files(path = 'C:/Users/Rewati/Documents/R/COVID_19/')
+
+#-------------------------------------------------------------------------------
+# Load File for covid_19_data.
+#-------------------------------------------------------------------------------
+#df <- read.csv("C:/Users/Rewati/Documents/R/COVID_19/covid_19_data.csv")
+df <- read.csv("C:/Users/Rewati/Documents/R/COVID_19/covid_19_data_old.csv")
+View(df)
+str(df)
+head(df)
+names(df)
+
+sum(df$Confirmed)
+sum(df$Recovered)
+sum(df$Deaths)
+
+
+df1 <- data.frame(state=c("Confirmed","Recovered","Deaths"),
+                 cases=c(sum(df$Confirmed),sum(df$Recovered),sum(df$Deaths)))
+
+ggplot(data=df1, aes(x=state, y=cases)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=cases), vjust=-0.3, size=3.5)+
+  theme_minimal()
+
+ggplot(data=df1, aes(x=state, y=cases, fill=state)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=cases), vjust=1.5, size=3.5)+
+  theme_minimal()
+
+# convert dates
+df$Date <- as.Date(df$ObservationDate, format = '%m/%d/%y')
+df$ObservationDate <- NULL
+df$Last.Update <- NULL
+
+df <- dplyr::group_by(df, Date) %>% dplyr::summarize(n=n(),
+                                                     Confirmed=sum(Confirmed),
+                                                     Deaths=sum(Deaths),
+                                                     Recovered=sum(Recovered))
+
+n <- nrow(df)
+print(paste0('Observations: ', n))
+
+#-------------------------------------------------------------------------------
+# Add few more features in data
+#-------------------------------------------------------------------------------
+df$Active <- df$Confirmed - df$Recovered - df$Deaths 
+df$MortRate <- df$Deaths / df$Confirmed
+df$RecoRate <- df$Recovered / df$Confirmed
+df$Reco_vs_Mort <- df$Recovered / df$Deaths
+df$DiffConf <- 0
+df$DiffConf[2:nrow(df)] <- diff(df$Confirmed)
+df$RelIncrease <- c(NaN, df$DiffConf[2:n] / df$Confirmed[1:n-1])
+df$DoublingDays <- round(log(2)/log(1+df$RelIncrease),2)
+df$DiffDeath <- 0
+df$DiffDeath[2:nrow(df)] <- diff(df$Deaths)
+df$RelIncD <- c(NaN, df$DiffDeath[2:n] / df$Deaths[1:n-1])
+df$DoublingDaysD <- round(log(2)/log(1+df$RelIncD),2)
+# show data frame
+View(df)
+
+#-------------------------------------------------------------------------------
+# Plotting Graphs for Analysis.
+#-------------------------------------------------------------------------------
+plot(df$Date, df$Confirmed, main = 'Confirmed Cases', type = 'b')
+grid()
+
+plot(df$Date, log10(df$Confirmed), main = 'Confirmed Cases -Log Scale', type = 'b')
+grid()
+
+plot(df$Date, df$DiffConf, main='Absolute Increase of Confirmed Cases', type='b')
+grid()
+
+plot(df$Date, df$RelIncrease, main='Relative Change vs Previous Day', type='b', ylim=c(0,0.1))
+grid()
+
+plot(df$Date, df$DoublingDays, main='Confirmed - Theoretical days until next doubling', type='b', ylim=c(0,1000))
+grid()
+
+plot(df$Date, df$Deaths, main='Deaths', type='b')
+grid()
+
+plot(df$Date, log10(df$Deaths), main='Deaths - Log Scale', type='b')
+grid()
+
+plot(df$Date, df$DiffDeath, main='Absolute Increase of Deaths', type='b')
+grid()
+
+plot(df$Date, df$RelIncD, main='Deaths - Relative Change vs Previous Day', type='b', ylim=c(0,0.05))
+grid()
+
+plot(df$Date, df$Recovered, main='Recovered', type='b')
+grid()
+
+plot(df$Date, df$Active, main='Active', type='b')
+grid()
+
+plot(df$Date, df$RecoRate, pch=16, col='darkgreen', type='b', ylab='Recovery Ratio', main='Recovery Ratio')
+grid()
+
+plot(df$Date, df$MortRate, pch=16, col='red', type='b', ylab='Death Ratio', main='Death Ratio')
+grid()
+
+plot(df$Date, df$Reco_vs_Mort, pch=16, col='blue', type='b', ylab='Recovered : Deaths', main='Recovered : Deaths')
+grid()
+
+# bubble plot (death ratio, recovery ratio, total positive cases)
+ggplot(df, aes(x=RecoRate, y=MortRate, size=Confirmed, color=Date)) +
+  geom_point(alpha=0.7) + ggtitle('Ratios') + theme(legend.position="bottom")
+
+write.csv(df, file='WorldData.csv')
+
+
+#-------------------------------------------------------------------------------
+# Filter data only for INDIA
+#-------------------------------------------------------------------------------
+#df <- read.csv("C:/Users/Rewati/Documents/R/COVID_19/covid_19_data.csv")
+df <- read.csv("C:/Users/Rewati/Documents/R/COVID_19/covid_19_data_old.csv")
+df_IND <- dplyr::filter(df, Country.Region == 'India')
+df_IND
+
+df1_IND <- data.frame(state=c("Confirmed","Recovered","Deaths"),
+                  cases=c(sum(df_IND$Confirmed),sum(df_IND$Recovered),sum(df_IND$Deaths)))
+
+ggplot(data=df1_IND, aes(x=state, y=cases)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  geom_text(aes(label=cases), vjust=-0.3, size=3.5)+
+  theme_minimal()
+
+ggplot(data=df1_IND, aes(x=state, y=cases, fill=state)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=cases), vjust=1.5, size=3.5)+
+  theme_minimal()
+
+# convert dates
+df_IND$Date <- as.Date(df_IND$ObservationDate, format = '%m/%d/%y')
+df_IND$ObservationDate <- NULL
+df_IND$Last.Update <- NULL
+
+df_IND <- dplyr::group_by(df_IND, Date) %>% dplyr::summarize(n=n(),
+                                                             Confirmed=sum(Confirmed),
+                                                             Deaths=sum(Deaths),
+                                                             Recovered=sum(Recovered))
+
+n <- nrow(df_IND)
+print(paste0('Observations: ', n))
+
+# add a few more features
+df_IND$Active <- df_IND$Confirmed - df_IND$Recovered - df_IND$Deaths 
+df_IND$MortRate <- df_IND$Deaths / df_IND$Confirmed
+df_IND$RecRate <- df_IND$Recovered / df_IND$Confirmed
+df_IND$Rec_vs_Mort <- df_IND$Recovered / df_IND$Deaths
+df_IND$DiffConf <- 0
+df_IND$DiffConf[2:nrow(df_IND)] <- diff(df_IND$Confirmed)
+df_IND$RelIncrease <- c(NaN, df_IND$DiffConf[2:n] / df_IND$Confirmed[1:n-1])
+df_IND$DoublingDays <- round(log(2)/log(1+df_IND$RelIncrease),2)
+df_IND$DiffDeath <- 0
+df_IND$DiffDeath[2:nrow(df_IND)] <- diff(df_IND$Deaths)
+df_IND$RelIncD <- c(NaN, df_IND$DiffDeath[2:n] / df_IND$Deaths[1:n-1])
+df_IND$DoublingDaysD <- round(log(2)/log(1+df_IND$RelIncD),2)
+# show data frame
+df_IND
+
+#-------------------------------------------------------------------------------
+# Plotting Graphs for India Analysis.
+#-------------------------------------------------------------------------------
+plot(df_IND$Date, df_IND$Confirmed, main='Confirmed Cases', type='b')
+grid()
+
+plot(df_IND$Date, log10(df_IND$Confirmed), main='Confirmed Cases - Log Scale', type='b')
+grid()
+
+plot(df_IND$Date, df_IND$DiffConf, main='Absolute Increase of Confirmed Cases', type='b')
+grid()
+
+plot(df_IND$Date, df_IND$RelIncrease, main='Relative Change vs Previous Day', type='b', ylim=c(0,0.1))
+grid()
+
+plot(df_IND$Date, df_IND$DoublingDays, main='Confirmed - Theoretical days until next doubling', type='b',ylim=c(0,1000))
+grid()
+
+plot(df_IND$Date, df_IND$Deaths, main='Deaths', type='b')
+grid()
+
+plot(df_IND$Date, log10(df_IND$Deaths), main='Deaths - Log Scale', type='b')
+grid()
+
+plot(df_IND$Date, df_IND$DiffDeath, main='Absolute Increase of Deaths', type='b')
+grid()
+
+plot(df_IND$Date, df_IND$RelIncD, main='Deaths - Relative Change vs Previous Day', type='b', ylim=c(0,0.05))
+grid()
+
+plot(df_IND$Date, df_IND$Recovered, main='Recovered', type='b')
+grid()
+
+plot(df_IND$Date, df_IND$Active, main='Active', type='b')
+grid()
+
+plot(df_IND$Date, df_IND$RecRate, pch=16, col='darkgreen', type='b', ylab='Recovery Ratio', main='Recovery Ratio')
+grid()
+
+plot(df_IND$Date, df_IND$MortRate, pch=16, col='red', type='b', ylab='Death Ratio', main='Death Ratio')
+grid()
+
+plot(df_IND$Date, df_IND$Rec_vs_Mort, pch=16, col='blue', type='b', ylab='Recovered : Deaths', main='Recovered : Deaths')
+grid()
+
+# bubble plot (death ratio, recovery ratio, total positive cases)
+ggplot(df_IND, aes(x=RecRate, y=MortRate, size=Confirmed, color=Date)) +
+  geom_point(alpha=0.7) + ggtitle('Ratios') + theme(legend.position="bottom")
+
+# store in CSV for further processing
+write.csv(df_IND, file='IND.csv')
+
+
